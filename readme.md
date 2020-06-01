@@ -61,13 +61,17 @@ What about errors in tests? I highly recommend that you make your test suite zer
 
 I cannot fully sidestep the debate on unit tests vs. integration tests vs. end-to-end tests. In my minimalistic, insular and radical view, end-to-end tests are the only essential tests for a backend. Unit tests might pass with flying colors but bugs might still lurk in the space between the tested function and the usage of said function by an endpoint. This is particularly so if a unit test uses a mock layer to represent the database, the filesystem, or another service. The client doesn't care whether parts of an endpoint, or the entire endpoint in isolation, work well. The client cares (rightly) about the endpoint as a whole functioning correctly. If you order pudding, you don't care whether the cook used the right amount of flour; you care about how the pudding tastes. A test suite that checks the correctness of invalid and valid payloads for an exposed endpoint is a much stronger argument for the correctness of a backend, since the definition of a correct backend is one that processes correctly both invalid and valid inputs.
 
-I don't want to discourage you from writing unit tests (or upsetting you regarding testing preferences, for that matter). All I can say is that I don't believe there's a substitute for testing the endpoints directly.
+I don't want to discourage you from writing unit tests (or upset you on account of your testing preferences, for that matter). All I can say is that I don't believe there's a substitute for testing the endpoints directly.
 
-### #3: A replicable setup process.
+End-to-end tests of the endpoints also have two positive impacts on the backend:
+- They can be a strong reference for the devs implementing the client, since they contain living examples of valid inputs and outputs for each endpoint.
+- A sequence of tests over endpoints can serve as an overall flow for the API, for both design and documentation purposes.
+
+### #3: A replicable setup process
 
 To set up the app (both for local development and for production), there should be a deterministic, replicable process for doing so. This process should cover both the provision of the environment where the app runs (including operative system, databases, file system and linkages to external services) and the app itself.
 
-Whether this is done by hand, through a bash script, or through a vastly more sophisticated pipeline involving builds, push notifications and containerization, is a related but different question. You can achieve a replicable setup process running commands by hand; and you might have state-of-the-art tools that, because of the way they're used, generate an inconsistent or broken environment or app. What I consider important is that *everything should be included explicitly in your process*. In other words, an entity (be it a human or a script) following the script should end up with a working version of your app, without any gotchas whatsoever. There should be no need to ask others for a particular piece of lore on how to get a certain library to run, or where to find a required environment variable. The one exception for these are application secrets for interacting with external services, which is reasonable to keep outside of version control.
+Whether this is done by hand, through a bash script, or through a vastly more sophisticated pipeline involving builds, push notifications and containerization, is a related but different question. You can achieve a replicable setup process running commands by hand; and you might have state-of-the-art tools that, because of the way they're used, generate an inconsistent or broken environment or app. What I consider important is that *everything should be explicitly included in your process*. In other words, an entity (be it a human or a script) following the instructions should end up with a working version of your app, without any gotchas whatsoever. There should be no need to ask others for a particular piece of lore on how to get a certain library to run, or where to find a required environment variable. The one exception for these are application secrets for interacting with external services, which is reasonable to keep outside of version control.
 
 I strongly discourage you from making your setup process reliant on black boxes or artifacts. These can be, for example, old application builds which were created with commands that are now lost; or database dumps that contain structural information about the database, not just mere data. These builds or dumps contain critical but unspecified data, and while strictly replicable, are fickle (especially if they rely on old versions of tools that eventually need to be upgraded). Your process should be able to construct the app in full, minus external dependencies (which have their own build process, if they're built with quality) and the data on the database.
 
@@ -76,7 +80,7 @@ A replicable setup process provides the following advantages:
 - Remove or minimize bugs related to the environment in which the app runs.
 - Increase the maintainability of the app, especially in the case it is deployed again after months or years of inactivity.
 
-### #4: An unified funnel for errors.
+### #4: An unified funnel for errors
 
 Any abnormal activity in the app should be noted and sent to an unified funnel for errors. Instances of abnormal activity are:
 
@@ -88,18 +92,22 @@ Any abnormal activity in the app should be noted and sent to an unified funnel f
 
 All errors will be sent to a funnel, which can be as simple as a log file, or can be as sophisticated as a set of external services that receive, manipulate, aggregate and fire notifications when certain items are received. The essential thing is to note all the errors and send them to the same place, with as much background information as possible.
 
-I advocate zero-tolerance to abnormal activity: there should be no known errors or warnings that are tolerated but might hamper the correctness of the backend. Every event can only be error or an expected outcome, never both.
+I advocate zero-tolerance towards abnormal activity: there should be no known errors or warnings that are tolerated but might hamper the correctness of the backend. Every event can only be error or an expected outcome, never both.
 
 By noting errors and sharply distinguishing from normal operations, errors are fixed faster and new errors (or old errors that were lurking behind the surface) appear much clearer. Eliminating the sources of error must be the highest priority for those working on the backend. Errors are, after all, unexpected outcomes, which are the very opposite of quality according to our initial definition.
 
-Errors should have different levels of criticality; errors above a certain level should trigger notifications for those maintaining the backend. Alerts of a critical nature should never be "normalized" by those who receive them - if you get used to receiving alerts about irrelevant things, you might miss a critical alert. You will very likely have to put protocols in place to turn off or qualify alerts during production deployments (where there might be some downtime), or when reporting untargeted security attacks on your app that haven't been successful (which happen constantly to servers exposed on the internet).
+Errors should trigger notifications for those maintaining the backend, so they can be worked on with the utmost priority.
+
+Some errors, however, might not merit an alert, but still should be logged and reviewed periodically. Examples of the latter are: 1) users entering a wrong username/password combination (but not repeatedly); 2) untargeted, low-volume and unsuccessful security attacks on your app done by botnets looking for common vulnerabilities. If you receive alerts for these common occurrences that cannot be avoided (but are not altogether normal either), you experience the risk of alerts being "normal", hence sharply increasing the likelihood that you'll miss a critical alert.
+
+You will also have to put protocols in place to turn off or qualify alerts during production deployments (where there might be some downtime). This is all worth it.
 
 ## Conclusion
 
 To summarize, I believe the following four elements to be the essential features of a quality backend:
 
-1. Thorough validation of the inputs of each of the endpoints of the backend
-2. Thorough and zero-tolerance end-to-end tests of all the endpoints of the backend
+1. Thorough validation of the inputs of each of the endpoints of the backend.
+2. Thorough and zero-tolerance end-to-end tests of all the endpoints of the backend.
 3. A replicable setup process.
 4. An unified funnel for errors.
 
@@ -118,11 +126,15 @@ Notice that my recommendations don't directly determine any of the following asp
 - Using many dependencies vs writing self-contained code.
 - Self-hosting vs hosting on the cloud.
 - Using external services vs not using external services at all.
-- Server vs serverless.
+- Server vs serverless architecture.
 - Choice of programming language.
 - Choice of paradigm.
 - Strict or loose typing.
 - Test-driven development vs writing the tests later.
 - Development methodology (Agile, Waterfall, Cowboy).
 
-I also find these recommendations to be applicable for backends of any size and scope; from small backends with a single developer to massive web services - though, admittedly, my experience with the latter is very limited.
+I consider these recommendations to be applicable for backends of any size and scope; from small backends with a single developer to massive web services - though, admittedly, my experience with the latter is very limited.
+
+## License
+
+This document is written by Federico Pereiro (fpereiro@gmail.com) and released into the public domain.
